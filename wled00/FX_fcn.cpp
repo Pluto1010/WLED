@@ -1218,10 +1218,12 @@ void WS2812FX::finalizeInit() {
 void WS2812FX::service() {
   unsigned long nowUp = millis(); // Be aware, millis() rolls over every 49 days
   now = nowUp + timebase;
+  if (_suspend) return;
   unsigned long elapsed = nowUp - _lastServiceShow;
-  if (_suspend || elapsed <= MIN_FRAME_DELAY) return;   // keep wifi alive - no matter if triggered or unlimited
-  if (!_triggered && (_targetFps != FPS_UNLIMITED)) {   // unlimited mode = no frametime
-    if (elapsed < _frametime) return;                   // too early for service
+
+  if (elapsed <= MIN_FRAME_DELAY) return;                                        // keep wifi alive - no matter if triggered or unlimited
+  if ( !_triggered && (_targetFps != FPS_UNLIMITED)) {                           // unlimited mode = no frametime
+    if (elapsed < _frametime) return;                                            // too early for service
   }
 
   bool doShow = false;
@@ -1240,7 +1242,7 @@ void WS2812FX::service() {
     if (!seg.isActive()) continue;
 
     // last condition ensures all solid segments are updated at the same time
-    if (nowUp > seg.next_time || _triggered || (doShow && seg.mode == FX_MODE_STATIC))
+    if (nowUp >= seg.next_time || _triggered || (doShow && seg.mode == FX_MODE_STATIC))
     {
       doShow = true;
       unsigned frameDelay = FRAMETIME;
@@ -1282,6 +1284,7 @@ void WS2812FX::service() {
     Segment::handleRandomPalette(); // slowly transition random palette; move it into for loop when each segment has individual random palette
     _lastServiceShow = nowUp; // update timestamp, for precise FPS control
     show();
+    _lastServiceShow = nowUp; // update timestamp, for precise FPS control
   }
   #ifdef WLED_DEBUG
   if ((_targetFps != FPS_UNLIMITED) && (millis() - nowUp > _frametime)) DEBUG_PRINTF_P(PSTR("Slow strip %u/%d.\n"), (unsigned)(millis()-nowUp), (int)_frametime);
@@ -1576,33 +1579,15 @@ void WS2812FX::show() {
 
   // avoid race condition, capture _callback value
   show_callback callback = _callback;
-  if (callback) callback(); // will call setPixelColor or setRealtimePixelColor
-
-  // paint actual pixels
-  int oldCCT = Bus::getCCT(); // store original CCT value (since it is global)
-  // when cctFromRgb is true we implicitly calculate WW and CW from RGB values (cct==-1)
-  if (cctFromRgb) BusManager::setSegmentCCT(-1);
-  for (size_t i = 0; i < totalLen; i++) {
-    // when correctWB is true setSegmentCCT() will convert CCT into K with which we can then
-    // correct/adjust RGB value according to desired CCT value, it will still affect actual WW/CW ratio
-    if (_pixelCCT) { // cctFromRgb already exluded at allocation
-      if (i == 0 || _pixelCCT[i-1] != _pixelCCT[i]) BusManager::setSegmentCCT(_pixelCCT[i], correctWB);
-    }
-
-    uint32_t c = _pixels[i]; // need a copy, do not modify _pixels directly (no byte access allowed on ESP32)
-    if(c > 0 && !(realtimeMode && arlsDisableGammaCorrection))
-        c = gamma32(c); // apply gamma correction if enabled note: applying gamma after brightness has too much color loss
-    BusManager::setPixelColor(getMappedPixelIndex(i), c);
-  }
-  Bus::setCCT(oldCCT);  // restore old CCT for ABL adjustments
-
-  d_free(_pixelCCT);
-  _pixelCCT = nullptr;
+  if (callback) callback();
+  unsigned long showNow = millis();
 
   // some buses send asynchronously and this method will return before
   // all of the data has been sent.
   // See https://github.com/Makuna/NeoPixelBus/wiki/ESP32-NeoMethods#neoesp32rmt-methods
   BusManager::show();
+
+  size_t diff = showNow - _lastShow;
 
   if (diff > 0) { // skip calculation if no time has passed
     size_t fpsCurr = (1000 << FPS_CALC_SHIFT) / diff; // fixed point math
@@ -1611,12 +1596,36 @@ void WS2812FX::show() {
   }
 }
 
-void WS2812FX::setRealtimePixelColor(unsigned i, uint32_t c) {
-  if (useMainSegmentOnly) {
-    const Segment &seg = getMainSegment();
-    if (seg.isActive() && i < seg.length()) seg.setPixelColorRaw(i, c);
-  } else {
-    setPixelColor(i, c);
+/**
+ * Returns a true value if any of the strips are still being updated.
+ * On some hardware (ESP32), strip updates are done asynchronously.
+ */
+bool WS2812FX::isUpdating() const {
+  return !BusManager::canAllShow();
+}
+
+/**
+ * Returns the refresh rate of the LED strip. Useful for finding out whether a given setup is fast enough.
+ * Only updates on show() or is set to 0 fps if last show is more than 2 secs ago, so accuracy varies
+ */
+uint16_t WS2812FX::getFps() const {
+  if (millis() - _lastShow > 2000) return 0;
+  return (FPS_MULTIPLIER * _cumulativeFps) >> FPS_CALC_SHIFT; // _cumulativeFps is stored in fixed point
+}
+
+void WS2812FX::setTargetFps(uint8_t fps) {
+  if (fps <= 250) _targetFps = fps;
+  if (_targetFps > 0) _frametime = 1000 / _targetFps;
+  else _frametime = MIN_FRAME_DELAY;     // unlimited mode
+}
+
+void WS2812FX::setMode(uint8_t segid, uint8_t m) {
+  if (segid >= _segments.size()) return;
+
+  if (m >= getModeCount()) m = getModeCount() - 1;
+
+  if (_segments[segid].mode != m) {
+    _segments[segid].setMode(m); // do not load defaults
   }
 }
 
@@ -1671,7 +1680,7 @@ void WS2812FX::setBrightness(uint8_t b, bool direct) {
   BusManager::setBrightness(scaledBri(b));
   if (!direct) {
     unsigned long t = millis();
-    if (_segments[0].next_time > t + 22 && t - _lastShow > MIN_SHOW_DELAY) trigger(); //apply brightness change immediately if no refresh soon
+    if (_segments[0].next_time > t + 22 && t - _lastShow > MIN_FRAME_DELAY) trigger(); //apply brightness change immediately if no refresh soon
   }
 }
 

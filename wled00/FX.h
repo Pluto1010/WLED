@@ -88,15 +88,6 @@ extern byte realtimeMode;           // used in getMappedPixelIndex()
 #endif
 #define FPS_CALC_SHIFT 7 // bit shift for fixed point math
 
-// FPS calculation (can be defined as compile flag for debugging)
-#ifndef FPS_CALC_AVG
-#define FPS_CALC_AVG 7 // average FPS calculation over this many frames (moving average)
-#endif
-#ifndef FPS_MULTIPLIER
-#define FPS_MULTIPLIER 1 // dev option: multiplier to get sub-frame FPS without floats
-#endif
-#define FPS_CALC_SHIFT 7 // bit shift for fixed point math
-
 /* each segment uses 82 bytes of SRAM memory, so if you're application fails because of
   insufficient memory, decreasing MAX_NUM_SEGMENTS may help */
 #ifdef ESP8266
@@ -114,8 +105,6 @@ extern byte realtimeMode;           // used in getMappedPixelIndex()
 /* How much data bytes each segment should max allocate to leave enough space for other segments,
   assuming each segment uses the same amount of data. 256 for ESP8266, 640 for ESP32. */
 #define FAIR_DATA_PER_SEG (MAX_SEGMENT_DATA / WS2812FX::getMaxSegments())
-
-#define MIN_SHOW_DELAY   (_frametime < 16 ? 8 : 15)
 
 #define NUM_COLORS       3 /* number of colors per segment */
 #define SEGMENT          (*strip._currentSegment)
@@ -868,7 +857,9 @@ class WS2812FX {
       customMappingTable(nullptr),
       customMappingSize(0),
       _lastShow(0),
-      _lastServiceShow(0)
+      _lastServiceShow(0),
+      _segment_index(0),
+      _mainSegment(0)
     {
       _mode.reserve(_modeCount);     // allocate memory to prevent initial fragmentation (does not increase size())
       _modeData.reserve(_modeCount); // allocate memory to prevent initial fragmentation (does not increase size())
