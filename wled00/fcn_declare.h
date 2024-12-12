@@ -369,20 +369,11 @@ void userConnected();
 void userLoop();
 
 //util.cpp
-#ifdef ESP8266
-#define HW_RND_REGISTER RANDOM_REG32
-#else // ESP32 family
-#include "soc/wdev_reg.h"
-#define HW_RND_REGISTER REG_READ(WDEV_RND_REG)
-#endif
-#define inoise8 perlin8   // fastled legacy alias
-#define inoise16 perlin16 // fastled legacy alias
-#define hex2int(a) (((a)>='0' && (a)<='9') ? (a)-'0' : ((a)>='A' && (a)<='F') ? (a)-'A'+10 : ((a)>='a' && (a)<='f') ? (a)-'a'+10 : 0)
-[[gnu::pure]] int getNumVal(const String &req, uint16_t pos);
-void parseNumber(const char* str, byte &val, byte minv=0, byte maxv=255);
-bool getVal(JsonVariant elem, byte &val, byte vmin=0, byte vmax=255); // getVal supports inc/decrementing and random ("X~Y(r|[w]~[-][Z])" form)
-[[gnu::pure]] bool getBoolVal(const JsonVariant &elem, bool dflt);
-bool updateVal(const char* req, const char* key, byte &val, byte minv=0, byte maxv=255);
+int getNumVal(const String* req, uint16_t pos);
+void parseNumber(const char* str, byte* val, byte minv=0, byte maxv=255);
+bool getVal(JsonVariant elem, byte* val, byte minv=0, byte maxv=255); // getVal supports inc/decrementing and random ("X~Y(r|~[w][-][Z])" form)
+bool getBoolVal(JsonVariant elem, bool dflt);
+bool updateVal(const char* req, const char* key, byte* val, byte minv=0, byte maxv=255);
 size_t printSetFormCheckbox(Print& settingsScript, const char* key, int val);
 size_t printSetFormValue(Print& settingsScript, const char* key, int val);
 size_t printSetFormValue(Print& settingsScript, const char* key, const char* val);

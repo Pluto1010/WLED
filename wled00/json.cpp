@@ -279,17 +279,17 @@ static bool deserializeSegment(JsonObject elem, byte it, byte presetId = 0)
   #endif
 
   byte fx = seg.mode;
-  if (getVal(elem["fx"], fx, 0, strip.getModeCount())) {
+  if (getVal(elem["fx"], &fx, 0, strip.getModeCount())) {
     if (!presetId && currentPlaylist>=0) unloadPlaylist();
     if (fx != seg.mode) seg.setMode(fx, elem[F("fxdef")]); // use transition (WARNING: may change map1D2D causing geometry change)
   }
 
-  getVal(elem["sx"], seg.speed);
-  getVal(elem["ix"], seg.intensity);
+  getVal(elem["sx"], &seg.speed);
+  getVal(elem["ix"], &seg.intensity);
 
   uint8_t pal = seg.palette;
   if (seg.getLightCapabilities() & 1) {  // ignore palette for White and On/Off segments
-    if (getVal(elem["pal"], pal, 0, getPaletteCount())) seg.setPalette(pal);
+    if (getVal(elem["pal"], &pal, 0, strip.getPaletteCount())) seg.setPalette(pal);
   }
 
   getVal(elem["c1"], seg.custom1);
@@ -515,7 +515,7 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
     DEBUG_PRINTF_P(PSTR("Preset direct: %d\n"), currentPreset);
   } else if (!root["ps"].isNull()) {
     // we have "ps" call (i.e. from button or external API call) or "pd" that includes "ps" (i.e. from UI call)
-    if (root["win"].isNull() && getVal(root["ps"], presetCycCurr, 1, 250) && presetCycCurr > 0 && presetCycCurr < 251 && presetCycCurr != currentPreset) {
+    if (root["win"].isNull() && getVal(root["ps"], &presetCycCurr, 1, 250) && presetCycCurr > 0 && presetCycCurr < 251 && presetCycCurr != currentPreset) {
       DEBUG_PRINTF_P(PSTR("Preset select: %d\n"), presetCycCurr);
       // b) preset ID only or preset that does not change state (use embedded cycling limits if they exist in getVal())
       applyPreset(presetCycCurr, callMode); // async load from file system (only preset ID was specified)
