@@ -161,13 +161,11 @@ static bool deserializeSegment(JsonObject elem, byte it, byte presetId = 0)
   bool     transpose = getBoolVal(elem[F("tp")], seg.transpose);
   #endif
 
-  // if segment's virtual dimensions change we need to restart effect (segment blending and PS rely on dimensions)
-  if (seg.mirror != mirror) seg.markForReset();
-  #ifndef WLED_DISABLE_2D
-  if (seg.mirror_y != mirror_y || seg.transpose != transpose) seg.markForReset();
-  #endif
+  uint8_t set = elem[F("set")] | seg.set;
+  seg.set = constrain(set, 0, 3);
 
-  int len = (stop > start) ? stop - start : 1;
+  int len = 1;
+  if (stop > start) len = stop - start;
   int offset = elem[F("of")] | INT32_MAX;
   if (offset != INT32_MAX) {
     int offsetAbs = abs(offset);
@@ -267,6 +265,7 @@ static bool deserializeSegment(JsonObject elem, byte it, byte presetId = 0)
   }
   #endif
 
+  //seg.map1D2D   = constrain(map1D2D, 0, 7); // done in setGeometry()
   seg.set       = constrain(set, 0, 3);
   seg.soundSim  = constrain(soundSim, 0, 3);
   seg.selected  = selected;
@@ -458,14 +457,18 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
   if (!segVar.isNull()) {
     // we may be called during strip.service() so we must not modify segments while effects are executing
     strip.suspend();
-    strip.waitForIt();
+    const unsigned long start = millis();
+    while (strip.isServicing() && millis() - start < strip.getFrameTime()) yield(); // wait until frame is over
+    #ifdef WLED_DEBUG
+    if (millis() - start > 0) DEBUG_PRINTLN(F("JSON: Waited for strip to finish servicing."));
+    #endif
     if (segVar.is<JsonObject>()) {
       int id = segVar["id"] | -1;
       //if "seg" is not an array and ID not specified, apply to all selected/checked segments
       if (id < 0) {
         //apply all selected segments
         for (size_t s = 0; s < strip.getSegmentsNum(); s++) {
-          const Segment &sg = strip.getSegment(s);
+          Segment &sg = strip.getSegment(s);
           if (sg.isActive() && sg.isSelected()) {
             deserializeSegment(segVar, s, presetId);
           }
