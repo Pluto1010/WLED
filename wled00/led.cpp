@@ -65,10 +65,9 @@ byte scaledBri(byte in)
 
 //applies global temporary brightness (briT) to strip
 void applyBri() {
-  if (realtimeOverride || !(realtimeMode && arlsForceMaxBri))
-  {
+  if (!(realtimeMode && arlsForceMaxBri)) {
     //DEBUG_PRINTF_P(PSTR("Applying strip brightness: %d (%d,%d)\n"), (int)briT, (int)bri, (int)briOld);
-    strip.setBrightness(briT);
+    strip.setBrightness(scaledBri(briT));
   }
 }
 
@@ -78,7 +77,7 @@ void applyFinalBri() {
   briOld = bri;
   briT = bri;
   applyBri();
-  strip.trigger(); // force one last update
+  strip.trigger();
 }
 
 
@@ -126,14 +125,6 @@ void stateUpdated(byte callMode) {
     jsonTransitionOnce = false;
     transitionActive = false;
     applyFinalBri();
-    strip.trigger();
-  } else {
-    if (transitionActive) {
-      briOld = briT;
-    } else if (bri != briOld || stateChanged)
-      strip.setTransitionMode(true); // force all segments to transition mode
-    transitionActive = true;
-    transitionStartTime = now;
   }
   stateChanged = false;
 }
