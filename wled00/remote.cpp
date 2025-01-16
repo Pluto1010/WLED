@@ -181,7 +181,7 @@ static bool remoteJson(int button)
   return parsed;
 }
 
-// Callback function that will be executed when data is received from a linked remote
+// Callback function that will be executed when data is received
 void handleWiZdata(uint8_t *incomingData, size_t len) {
   message_structure_t *incoming = reinterpret_cast<message_structure_t *>(incomingData);
 
