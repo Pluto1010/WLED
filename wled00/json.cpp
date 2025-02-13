@@ -178,7 +178,7 @@ static bool deserializeSegment(JsonObject elem, byte it, byte presetId = 0)
   if (stop > start && of > len -1) of = len -1;
 
   // update segment (delete if necessary)
-  seg.setGeometry(start, stop, grp, spc, of, startY, stopY, map1D2D); // strip needs to be suspended for this to work without issues
+  seg.setGeometry(start, stop, grp, spc, of, startY, stopY); // strip needs to be suspended for this to work without issues
 
   if (newSeg) seg.refreshLightCapabilities(); // fix for #3403
 

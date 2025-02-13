@@ -165,6 +165,7 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
   uint8_t cctBlending = hw_led[F("cb")] | Bus::getCCTBlend();
   Bus::setCCTBlend(cctBlending);
   strip.setTargetFps(hw_led["fps"]); //NOP if 0, default 42 FPS
+  CJSON(useGlobalLedBuffer, hw_led[F("ld")]);
   #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3)
   CJSON(useParallelI2S, hw_led[F("prl")]);
   #endif
@@ -205,8 +206,10 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
   JsonArray ins = hw_led["ins"];
   if (!ins.isNull()) {
     int s = 0;  // bus iterator
+    if (fromFS) BusManager::removeAll(); // can't safely manipulate busses directly in network callback
+
     for (JsonObject elm : ins) {
-      if (s >= WLED_MAX_BUSSES) break; // only counts physical buses
+      if (s >= WLED_MAX_BUSSES+WLED_MIN_VIRTUAL_BUSSES) break;
       uint8_t pins[5] = {255, 255, 255, 255, 255};
       JsonArray pinArr = elm["pin"];
       if (pinArr.size() == 0) continue;
@@ -235,102 +238,10 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
       }
       ledType |= refresh << 7; // hack bit 7 to indicate strip requires off refresh
 
-      String host = elm[F("text")] | String();
-      busConfigs.emplace_back(ledType, pins, start, length, colorOrder, reversed, skipFirst, AWmode, freqkHz, maPerLed, maMax, host);
+      busConfigs.push_back(std::move(BusConfig(ledType, pins, start, length, colorOrder, reversed, skipFirst, AWmode, freqkHz, useGlobalLedBuffer, maPerLed, maMax)));
       doInitBusses = true;  // finalization done in beginStrip()
-      if (!Bus::isVirtual(ledType)) s++; // have as many virtual buses as you want
+      s++;
     }
-  } else if (fromFS) {
-    //if busses failed to load, add default (fresh install, FS issue, ...)
-    BusManager::removeAll();
-    busConfigs.clear();
-
-    DEBUG_PRINTLN(F("No busses, init default"));
-    constexpr unsigned defDataTypes[] = {LED_TYPES};
-    constexpr unsigned defDataPins[] = {DATA_PINS};
-    constexpr unsigned defCounts[] = {PIXEL_COUNTS};
-    constexpr unsigned defNumTypes = (sizeof(defDataTypes) / sizeof(defDataTypes[0]));
-    constexpr unsigned defNumPins = (sizeof(defDataPins) / sizeof(defDataPins[0]));
-    constexpr unsigned defNumCounts = (sizeof(defCounts) / sizeof(defCounts[0]));
-
-    static_assert(validatePinsAndTypes(defDataTypes, defNumTypes, defNumPins),
-                  "The default pin list defined in DATA_PINS does not match the pin requirements for the default buses defined in LED_TYPES");
-
-    unsigned mem = 0;
-    unsigned pinsIndex = 0;
-    unsigned digitalCount = 0;
-    for (unsigned i = 0; i < WLED_MAX_BUSSES; i++) {
-      uint8_t defPin[OUTPUT_MAX_PINS];
-      // if we have less types than requested outputs and they do not align, use last known type to set current type
-      unsigned dataType = defDataTypes[(i < defNumTypes) ? i : defNumTypes -1];
-      unsigned busPins = Bus::getNumberOfPins(dataType);
-
-      // if we need more pins than available all outputs have been configured
-      if (pinsIndex + busPins > defNumPins) break;
-
-      // Assign all pins first so we can check for conflicts on this bus
-      for (unsigned j = 0; j < busPins && j < OUTPUT_MAX_PINS; j++) defPin[j] = defDataPins[pinsIndex + j];
-
-      for (unsigned j = 0; j < busPins && j < OUTPUT_MAX_PINS; j++) {
-        bool validPin = true;
-        // When booting without config (1st boot) we need to make sure GPIOs defined for LED output don't clash with hardware
-        // i.e. DEBUG (GPIO1), DMX (2), SPI RAM/FLASH (16&17 on ESP32-WROVER/PICO), read/only pins, etc.
-        // Pin should not be already allocated, read/only or defined for current bus
-        while (PinManager::isPinAllocated(defPin[j]) || !PinManager::isPinOk(defPin[j],true)) {
-          if (validPin) {
-            DEBUG_PRINTLN(F("Some of the provided pins cannot be used to configure this LED output."));
-            defPin[j] = 1; // start with GPIO1 and work upwards
-            validPin = false;
-          } else if (defPin[j] < WLED_NUM_PINS) {
-            defPin[j]++;
-          } else {
-            DEBUG_PRINTLN(F("No available pins left! Can't configure output."));
-            break;
-          }
-          // is the newly assigned pin already defined or used previously?
-          // try next in line until there are no clashes or we run out of pins
-          bool clash;
-          do {
-            clash = false;
-            // check for conflicts on current bus
-            for (const auto &pin : defPin) {
-              if (&pin != &defPin[j] && pin == defPin[j]) {
-                clash = true;
-                break;
-              }
-            }
-            // We already have a clash on current bus, no point checking next buses
-            if (!clash) {
-              // check for conflicts in defined pins
-              for (const auto &pin : defDataPins) {
-                if (pin == defPin[j]) {
-                  clash = true;
-                  break;
-                }
-              }
-            }
-            if (clash) defPin[j]++;
-            if (defPin[j] >= WLED_NUM_PINS) break;
-          } while (clash);
-        }
-      }
-      pinsIndex += busPins;
-
-      // if we have less counts than pins and they do not align, use last known count to set current count
-      unsigned count = defCounts[(i < defNumCounts) ? i : defNumCounts -1];
-      unsigned start = 0;
-      // analog always has length 1
-      if (Bus::isPWM(dataType) || Bus::isOnOff(dataType)) count = 1;
-      BusConfig defCfg = BusConfig(dataType, defPin, start, count, DEFAULT_LED_COLOR_ORDER, false, 0, RGBW_MODE_MANUAL_ONLY, 0);
-      mem += defCfg.memUsage(Bus::isDigital(dataType) && !Bus::is2Pin(dataType) ? digitalCount++ : 0);
-      if (mem > MAX_LED_MEMORY) {
-        DEBUG_PRINTF_P(PSTR("Out of LED memory! Bus %d (%d) #%u not created."), (int)dataType, (int)count, digitalCount);
-        break;
-      }
-      busConfigs.push_back(defCfg); // use push_back for simplification as we needed defCfg to calculate memory usage
-      doInitBusses = true;  // finalization done in beginStrip()
-    }
-    DEBUG_PRINTF_P(PSTR("LED buffer size: %uB/%uB\n"), mem, BusManager::memUsage());
   }
   if (hw_led["rev"] && BusManager::getNumBusses()) BusManager::getBus(0)->setReversed(true); //set 0.11 global reversed setting for first bus
 
@@ -944,6 +855,7 @@ void serializeConfig(JsonObject root) {
   hw_led[F("cb")] = Bus::getCCTBlend();
   hw_led["fps"] = strip.getTargetFps();
   hw_led[F("rgbwm")] = Bus::getGlobalAWMode(); // global auto white mode override
+  hw_led[F("ld")] = useGlobalLedBuffer;
   #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3)
   hw_led[F("prl")] = BusManager::hasParallelOutput();
   #endif
@@ -972,8 +884,8 @@ void serializeConfig(JsonObject root) {
 
   for (size_t s = 0; s < BusManager::getNumBusses(); s++) {
     DEBUG_PRINTF_P(PSTR("Cfg: Saving bus #%u\n"), s);
-    const Bus *bus = BusManager::getBus(s);
-    if (!bus || !bus->isOk()) break;
+    Bus *bus = BusManager::getBus(s);
+    if (!bus || bus->getLength()==0) break;
     DEBUG_PRINTF_P(PSTR("  (%d-%d, type:%d, CO:%d, rev:%d, skip:%d, AW:%d kHz:%d, mA:%d/%d)\n"),
       (int)bus->getStart(), (int)(bus->getStart()+bus->getLength()),
       (int)(bus->getType() & 0x7F),

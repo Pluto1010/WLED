@@ -405,10 +405,8 @@ void Segment::handleRandomPalette() {
   Segment::_nextPaletteBlend = now + ((transitionFrames >> 8) * frameTime); // postpone next blend if necessary
 }
 
-// sets Segment geometry (length or width/height and grouping, spacing and offset as well as 2D mapping)
-// strip must be suspended (strip.suspend()) before calling this function
-// this function may call fill() to clear pixels if spacing or mapping changed (which requires setting _vWidth, _vHeight, _vLength or beginDraw())
-void Segment::setGeometry(uint16_t i1, uint16_t i2, uint8_t grp, uint8_t spc, uint16_t ofs, uint16_t i1Y, uint16_t i2Y, uint8_t m12) {
+// segId is given when called from network callback, changes are queued if that segment is currently in its effect function
+void Segment::setGeometry(uint16_t i1, uint16_t i2, uint8_t grp, uint8_t spc, uint16_t ofs, uint16_t i1Y, uint16_t i2Y) {
   // return if neither bounds nor grouping have changed
   bool boundsUnchanged = (start == i1 && stop == i2);
   #ifndef WLED_DISABLE_2D
@@ -581,10 +579,10 @@ Segment &Segment::setName(const char *newName) {
   if (newName) {
     const int newLen = min(strlen(newName), (size_t)WLED_MAX_SEGNAME_LEN);
     if (newLen) {
-      if (name) d_free(name); // free old name
-      name = static_cast<char*>(d_malloc(newLen+1));
-      if (mode == FX_MODE_2DSCROLLTEXT) startTransition(strip.getTransition(), true); // if the name changes in scrolling text mode, we need to copy the segment for blending
+      if (name) name = static_cast<char*>(realloc(name, newLen+1));
+      else      name = static_cast<char*>(malloc(newLen+1));
       if (name) strlcpy(name, newName, newLen+1);
+      name[newLen] = 0;
       return *this;
     }
   }
@@ -961,7 +959,34 @@ uint32_t IRAM_ATTR_YN Segment::getPixelColor(int i) const
   return getPixelColorRaw(i);
 }
 
-void Segment::refreshLightCapabilities() const {
+uint8_t Segment::differs(const Segment& b) const {
+  uint8_t d = 0;
+  if (start != b.start)         d |= SEG_DIFFERS_BOUNDS;
+  if (stop != b.stop)           d |= SEG_DIFFERS_BOUNDS;
+  if (offset != b.offset)       d |= SEG_DIFFERS_GSO;
+  if (grouping != b.grouping)   d |= SEG_DIFFERS_GSO;
+  if (spacing != b.spacing)     d |= SEG_DIFFERS_GSO;
+  if (opacity != b.opacity)     d |= SEG_DIFFERS_BRI;
+  if (mode != b.mode)           d |= SEG_DIFFERS_FX;
+  if (speed != b.speed)         d |= SEG_DIFFERS_FX;
+  if (intensity != b.intensity) d |= SEG_DIFFERS_FX;
+  if (palette != b.palette)     d |= SEG_DIFFERS_FX;
+  if (custom1 != b.custom1)     d |= SEG_DIFFERS_FX;
+  if (custom2 != b.custom2)     d |= SEG_DIFFERS_FX;
+  if (custom3 != b.custom3)     d |= SEG_DIFFERS_FX;
+  if (startY != b.startY)       d |= SEG_DIFFERS_BOUNDS;
+  if (stopY != b.stopY)         d |= SEG_DIFFERS_BOUNDS;
+
+  //bit pattern: (msb first)
+  // set:2, sound:2, mapping:3, transposed, mirrorY, reverseY, [reset,] paused, mirrored, on, reverse, [selected]
+  if ((options & 0b1111111111011110U) != (b.options & 0b1111111111011110U)) d |= SEG_DIFFERS_OPT;
+  if ((options & 0x0001U) != (b.options & 0x0001U))                         d |= SEG_DIFFERS_SEL;
+  for (unsigned i = 0; i < NUM_COLORS; i++) if (colors[i] != b.colors[i])   d |= SEG_DIFFERS_COL;
+
+  return d;
+}
+
+void Segment::refreshLightCapabilities() {
   unsigned capabilities = 0;
 
   if (!isActive()) {
@@ -1152,27 +1177,21 @@ void WS2812FX::finalizeInit() {
   #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3)
   // determine if it is sensible to use parallel I2S outputs on ESP32 (i.e. more than 5 outputs = 1 I2S + 4 RMT)
   unsigned maxLedsOnBus = 0;
-  unsigned busType = 0;
   for (const auto &bus : busConfigs) {
     if (Bus::isDigital(bus.type) && !Bus::is2Pin(bus.type)) {
       digitalCount++;
-      if (busType == 0) busType = bus.type; // remember first bus type
-      if (busType != bus.type) {
-        DEBUG_PRINTF_P(PSTR("Mixed digital bus types detected! Forcing single I2S output.\n"));
-        useParallelI2S = false; // mixed bus types, no parallel I2S
-      }
       if (bus.count > maxLedsOnBus) maxLedsOnBus = bus.count;
     }
   }
   DEBUG_PRINTF_P(PSTR("Maximum LEDs on a bus: %u\nDigital buses: %u\n"), maxLedsOnBus, digitalCount);
-  // we may remove 600 LEDs per bus limit when NeoPixelBus is updated beyond 2.8.3
-  if (maxLedsOnBus <= 600 && useParallelI2S) BusManager::useParallelOutput(); // must call before creating buses
+  // we may remove 300 LEDs per bus limit when NeoPixelBus is updated beyond 2.9.0
+  if (maxLedsOnBus <= 300 && useParallelI2S) BusManager::useParallelOutput(); // must call before creating buses
   else useParallelI2S = false; // enforce single I2S
-  digitalCount = 0;
   #endif
 
   // create buses/outputs
   unsigned mem = 0;
+  digitalCount = 0;
   for (const auto &bus : busConfigs) {
     mem += bus.memUsage(Bus::isDigital(bus.type) && !Bus::is2Pin(bus.type) ? digitalCount++ : 0); // includes global buffer
     if (mem <= MAX_LED_MEMORY) {
@@ -1181,6 +1200,92 @@ void WS2812FX::finalizeInit() {
   }
   busConfigs.clear();
   busConfigs.shrink_to_fit();
+
+  //if busses failed to load, add default (fresh install, FS issue, ...)
+  if (BusManager::getNumBusses() == 0) {
+    DEBUG_PRINTLN(F("No busses, init default"));
+    constexpr unsigned defDataTypes[] = {LED_TYPES};
+    constexpr unsigned defDataPins[] = {DATA_PINS};
+    constexpr unsigned defCounts[] = {PIXEL_COUNTS};
+    constexpr unsigned defNumTypes = ((sizeof defDataTypes) / (sizeof defDataTypes[0]));
+    constexpr unsigned defNumPins = ((sizeof defDataPins) / (sizeof defDataPins[0]));
+    constexpr unsigned defNumCounts = ((sizeof defCounts) / (sizeof defCounts[0]));
+
+    static_assert(validatePinsAndTypes(defDataTypes, defNumTypes, defNumPins),
+                  "The default pin list defined in DATA_PINS does not match the pin requirements for the default buses defined in LED_TYPES");
+    
+    unsigned prevLen = 0;
+    unsigned pinsIndex = 0;
+    digitalCount = 0;
+    for (unsigned i = 0; i < WLED_MAX_BUSSES+WLED_MIN_VIRTUAL_BUSSES; i++) {
+      uint8_t defPin[OUTPUT_MAX_PINS];
+      // if we have less types than requested outputs and they do not align, use last known type to set current type
+      unsigned dataType = defDataTypes[(i < defNumTypes) ? i : defNumTypes -1];
+      unsigned busPins = Bus::getNumberOfPins(dataType);
+
+      // if we need more pins than available all outputs have been configured
+      if (pinsIndex + busPins > defNumPins) break;
+      
+      // Assign all pins first so we can check for conflicts on this bus
+      for (unsigned j = 0; j < busPins && j < OUTPUT_MAX_PINS; j++) defPin[j] = defDataPins[pinsIndex + j];
+
+      for (unsigned j = 0; j < busPins && j < OUTPUT_MAX_PINS; j++) {
+        bool validPin = true;
+        // When booting without config (1st boot) we need to make sure GPIOs defined for LED output don't clash with hardware
+        // i.e. DEBUG (GPIO1), DMX (2), SPI RAM/FLASH (16&17 on ESP32-WROVER/PICO), read/only pins, etc.
+        // Pin should not be already allocated, read/only or defined for current bus
+        while (PinManager::isPinAllocated(defPin[j]) || !PinManager::isPinOk(defPin[j],true)) {
+          if (validPin) {
+            DEBUG_PRINTLN(F("Some of the provided pins cannot be used to configure this LED output."));
+            defPin[j] = 1; // start with GPIO1 and work upwards
+            validPin = false;
+          } else if (defPin[j] < WLED_NUM_PINS) {
+            defPin[j]++;
+          } else {
+            DEBUG_PRINTLN(F("No available pins left! Can't configure output."));
+            return;
+          }
+          // is the newly assigned pin already defined or used previously?
+          // try next in line until there are no clashes or we run out of pins
+          bool clash;
+          do {
+            clash = false;
+            // check for conflicts on current bus
+            for (const auto &pin : defPin) {
+              if (&pin != &defPin[j] && pin == defPin[j]) {
+                clash = true;
+                break;
+              }
+            }
+            // We already have a clash on current bus, no point checking next buses
+            if (!clash) {
+              // check for conflicts in defined pins
+              for (const auto &pin : defDataPins) {
+                if (pin == defPin[j]) {
+                  clash = true;
+                  break;
+                }
+              }
+            }
+            if (clash) defPin[j]++;
+            if (defPin[j] >= WLED_NUM_PINS) break;
+          } while (clash);
+        }
+      }
+      pinsIndex += busPins;
+
+      unsigned start = prevLen;
+      // if we have less counts than pins and they do not align, use last known count to set current count
+      unsigned count = defCounts[(i < defNumCounts) ? i : defNumCounts -1];
+      // analog always has length 1
+      if (Bus::isPWM(dataType) || Bus::isOnOff(dataType)) count = 1;
+      prevLen += count;
+      BusConfig defCfg = BusConfig(dataType, defPin, start, count, DEFAULT_LED_COLOR_ORDER, false, 0, RGBW_MODE_MANUAL_ONLY, 0, useGlobalLedBuffer);
+      mem += defCfg.memUsage(Bus::isDigital(dataType) && !Bus::is2Pin(dataType) ? digitalCount++ : 0);
+      if (BusManager::add(defCfg) == -1) break;
+    }
+  }
+  DEBUG_PRINTF_P(PSTR("LED buffer size: %uB/%uB\n"), mem, BusManager::memUsage());
 
   _length = 0;
   for (size_t i=0; i<BusManager::getNumBusses(); i++) {
@@ -1196,7 +1301,6 @@ void WS2812FX::finalizeInit() {
     bus->begin();
     bus->setBrightness(scaledBri(bri));
   }
-  BusManager::initializeABL(); // init brightness limiter
   DEBUG_PRINTF_P(PSTR("Heap after buses: %d\n"), ESP.getFreeHeap());
 
   Segment::maxWidth  = _length;
@@ -1772,6 +1876,19 @@ void WS2812FX::purgeSegments() {
 
 Segment& WS2812FX::getSegment(unsigned id) {
   return _segments[id >= _segments.size() ? getMainSegmentId() : id]; // vectors
+}
+
+// sets new segment bounds, queues if that segment is currently running
+void WS2812FX::setSegment(uint8_t segId, uint16_t i1, uint16_t i2, uint8_t grouping, uint8_t spacing, uint16_t offset, uint16_t startY, uint16_t stopY) {
+  if (segId >= getSegmentsNum()) {
+    if (i2 <= i1) return; // do not append empty/inactive segments
+    appendSegment(Segment(0, strip.getLengthTotal()));
+    segId = getSegmentsNum()-1; // segments are added at the end of list
+  }
+  suspend();
+  _segments[segId].setGeometry(i1, i2, grouping, spacing, offset, startY, stopY);
+  resume();
+  if (segId > 0 && segId == getSegmentsNum()-1 && i2 <= i1) _segments.pop_back(); // if last segment was deleted remove it from vector
 }
 
 void WS2812FX::resetSegments() {

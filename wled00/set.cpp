@@ -151,10 +151,10 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     strip.correctWB = request->hasArg(F("CCT"));
     strip.cctFromRgb = request->hasArg(F("CR"));
     cctICused = request->hasArg(F("IC"));
-    uint8_t cctBlending = request->arg(F("CB")).toInt();
-    Bus::setCCTBlend(cctBlending);
+    Bus::setCCTBlend(request->arg(F("CB")).toInt());
     Bus::setGlobalAWMode(request->arg(F("AW")).toInt());
     strip.setTargetFps(request->arg(F("FR")).toInt());
+    useGlobalLedBuffer = request->hasArg(F("LD"));
     #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3)
     useParallelI2S = request->hasArg(F("PR"));
     #endif
@@ -229,7 +229,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
       text = request->arg(hs).substring(0,31);
       // actual finalization is done in WLED::loop() (removing old busses and adding new)
       // this may happen even before this loop is finished so we do "doInitBusses" after the loop
-      busConfigs.emplace_back(type, pins, start, length, colorOrder | (channelSwap<<4), request->hasArg(cv), skip, awmode, freq, maPerLed, maMax, text);
+      busConfigs.push_back(std::move(BusConfig(type, pins, start, length, colorOrder | (channelSwap<<4), request->hasArg(cv), skip, awmode, freq, useGlobalLedBuffer, maPerLed, maMax)));
       busesChanged = true;
     }
     //doInitBusses = busesChanged; // we will do that below to ensure all input data is processed

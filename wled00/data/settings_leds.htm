@@ -42,10 +42,10 @@
 			if (loc) d.Sf.action = getURL('/settings/leds');
 		}
 		function bLimits(b,v,p,m,l,o=5,d=2,a=6) {
-			maxB  = b; // maxB - max physical (analog + digital) buses: 32 - ESP32, 14 - S3/S2, 6 - C3, 4 - 8266
+			oMaxB = maxB = b; // maxB - max buses (can be changed if using ESP32 parallel I2S): 19 - ESP32, 14 - S3/S2, 6 - C3, 4 - 8266
 			maxD  = d; // maxD - max digital channels (can be changed if using ESP32 parallel I2S): 16 - ESP32, 12 - S3/S2, 2 - C3, 3 - 8266
 			maxA  = a; // maxA - max analog channels: 16 - ESP32, 8 - S3/S2, 6 - C3, 5 - 8266
-			maxV  = v; // maxV - min virtual buses: 6 - ESP32/S3, 4 - S2/C3, 3 - ESP8266 (only used to distinguish S2/S3)
+			maxV  = v; // maxV - min virtual buses: 4 - ESP32/S3, 3 - S2/C3, 2 - ESP8266
 			maxPB = p; // maxPB - max LEDs per bus
 			maxM  = m; // maxM - max LED memory
 			maxL  = l; // maxL - max LEDs (will serve to determine ESP >1664 == ESP32)
@@ -361,13 +361,17 @@
 						else LC.style.color = d.ro_gpio.some((e)=>e==parseInt(LC.value)) ? "orange" : "#fff";
 					}
 			});
-			if (is32() || isS2() || isS3()) {
-				if (maxLC > 600 || dC < 2 || sameType <= 0) {
+			const S2 = (oMaxB == 14) && (maxV == 4);
+			const S3 = (oMaxB == 14) && (maxV == 6);
+			if (oMaxB == 19 || S2 || S3) { // TODO: crude ESP32 & S2/S3 detection
+				if (maxLC > 300 || dC <= 2) {
 					d.Sf["PR"].checked = false;
 					gId("prl").classList.add("hide");
 				} else
 					gId("prl").classList.remove("hide");
-			} else d.Sf["PR"].checked = false;
+				maxD = (S2 || S3 ? 4 : 8) + (d.Sf["PR"].checked ? 8 : S2); // TODO: use bLimits() : 4/8RMT + (x1/x8 parallel) I2S1
+				maxB = oMaxB - (d.Sf["PR"].checked ? 0 : 7 + S3); // S2 (maxV==3) does support single I2S
+			}
 			// distribute ABL current if not using PPL
 			enPPL(sDI);
 

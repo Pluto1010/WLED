@@ -643,9 +643,9 @@ class Segment {
     inline uint16_t length()               const { return width() * height(); }               // segment length (count) in physical pixels
     inline uint16_t groupLength()          const { return grouping + spacing; }
     inline uint8_t  getLightCapabilities() const { return _capabilities; }
-    inline void     deactivate()                 { setGeometry(0,0); }
-    inline Segment &clearName()                  { d_free(name); name = nullptr; return *this; }
-    inline Segment &setName(const String &name)  { return setName(name.c_str()); }
+    inline void     deactivate()               { setGeometry(0,0); }
+    inline Segment &clearName()                { if (name) free(name); name = nullptr; return *this; }
+    inline Segment &setName(const String &name) { return setName(name.c_str()); }
 
     inline static unsigned vLength()                       { return Segment::_vLength; }
     inline static unsigned vWidth()                        { return Segment::_vWidth; }
@@ -653,10 +653,7 @@ class Segment {
     inline static uint32_t getCurrentColor(unsigned i)     { return Segment::_currentColors[i<NUM_COLORS?i:0]; }
     inline static const CRGBPalette16 &getCurrentPalette() { return Segment::_currentPalette; }
 
-    inline void setDrawDimensions() const { Segment::_vWidth = virtualWidth(); Segment::_vHeight = virtualHeight(); Segment::_vLength = virtualLength(); }
-
-    void    beginDraw(uint16_t prog = 0xFFFFU);         // set up parameters for current effect
-    void    setGeometry(uint16_t i1, uint16_t i2, uint8_t grp=1, uint8_t spc=0, uint16_t ofs=UINT16_MAX, uint16_t i1Y=0, uint16_t i2Y=1, uint8_t m12=0);
+    void    setGeometry(uint16_t i1, uint16_t i2, uint8_t grp=1, uint8_t spc=0, uint16_t ofs=UINT16_MAX, uint16_t i1Y=0, uint16_t i2Y=1);
     Segment &setColor(uint8_t slot, uint32_t c);
     Segment &setCCT(uint16_t k);
     Segment &setOpacity(uint8_t o);
@@ -664,7 +661,8 @@ class Segment {
     Segment &setMode(uint8_t fx, bool loadDefaults = false);
     Segment &setPalette(uint8_t pal);
     Segment &setName(const char* name);
-    void    refreshLightCapabilities() const;
+    uint8_t differs(const Segment& b) const;
+    void    refreshLightCapabilities();
 
     // runtime data functions
     inline uint16_t dataSize() const { return _dataLen; }

@@ -3,7 +3,7 @@
 #define BusWrapper_h
 
 //#define NPB_CONF_4STEP_CADENCE
-#include "NeoPixelBus.h"
+#include "NeoPixelBusLg.h"
 
 //Hardware SPI Pins
 #define P_8266_HS_MOSI 13
@@ -245,54 +245,54 @@
 #endif
 
 //RGB
-#define B_32_RN_NEO_3 NeoPixelBus<NeoGrbFeature, NeoEsp32RmtNWs2812xMethod> // ESP32, S2, S3, C3
-//#define B_32_IN_NEO_3 NeoPixelBus<NeoGrbFeature, NeoEsp32I2sNWs2812xMethod> // ESP32 (dynamic I2S selection)
-#define B_32_I2_NEO_3 NeoPixelBus<NeoGrbFeature, X1Ws2812xMethod> // ESP32, S2, S3 (automatic I2S selection, see typedef above)
-#define B_32_IP_NEO_3 NeoPixelBus<NeoGrbFeature, X8Ws2812xMethod> // parallel I2S (ESP32, S2, S3)
+#define B_32_RN_NEO_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod> // ESP32, S2, S3, C3
+//#define B_32_IN_NEO_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32I2sNWs2812xMethod, NeoGammaNullMethod> // ESP32 (dynamic I2S selection)
+#define B_32_I2_NEO_3 NeoPixelBusLg<NeoGrbFeature, X1Ws2812xMethod, NeoGammaNullMethod> // ESP32, S2, S3 (automatic I2S selection, see typedef above)
+#define B_32_IP_NEO_3 NeoPixelBusLg<NeoGrbFeature, X8Ws2812xMethod, NeoGammaNullMethod> // parallel I2S (ESP32, S2, S3)
 //RGBW
-#define B_32_RN_NEO_4 NeoPixelBus<NeoGrbwFeature, NeoEsp32RmtNSk6812Method>
-#define B_32_I2_NEO_4 NeoPixelBus<NeoGrbwFeature, X1Sk6812Method>
-#define B_32_IP_NEO_4 NeoPixelBus<NeoGrbwFeature, X8Sk6812Method> // parallel I2S
+#define B_32_RN_NEO_4 NeoPixelBusLg<NeoGrbwFeature, NeoEsp32RmtNSk6812Method, NeoGammaNullMethod>
+#define B_32_I2_NEO_4 NeoPixelBusLg<NeoGrbwFeature, X1Sk6812Method, NeoGammaNullMethod>
+#define B_32_IP_NEO_4 NeoPixelBusLg<NeoGrbwFeature, X8Sk6812Method, NeoGammaNullMethod> // parallel I2S
 //400Kbps
-#define B_32_RN_400_3 NeoPixelBus<NeoGrbFeature, NeoEsp32RmtN400KbpsMethod>
-#define B_32_I2_400_3 NeoPixelBus<NeoGrbFeature, X1400KbpsMethod>
-#define B_32_IP_400_3 NeoPixelBus<NeoGrbFeature, X8400KbpsMethod> // parallel I2S
+#define B_32_RN_400_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32RmtN400KbpsMethod, NeoGammaNullMethod>
+#define B_32_I2_400_3 NeoPixelBusLg<NeoGrbFeature, X1400KbpsMethod, NeoGammaNullMethod>
+#define B_32_IP_400_3 NeoPixelBusLg<NeoGrbFeature, X8400KbpsMethod, NeoGammaNullMethod> // parallel I2S
 //TM1814 (RGBW)
-#define B_32_RN_TM1_4 NeoPixelBus<NeoWrgbTm1814Feature, NeoEsp32RmtNTm1814Method>
-#define B_32_I2_TM1_4 NeoPixelBus<NeoWrgbTm1814Feature, X1Tm1814Method>
-#define B_32_IP_TM1_4 NeoPixelBus<NeoWrgbTm1814Feature, X8Tm1814Method> // parallel I2S
+#define B_32_RN_TM1_4 NeoPixelBusLg<NeoWrgbTm1814Feature, NeoEsp32RmtNTm1814Method, NeoGammaNullMethod>
+#define B_32_I2_TM1_4 NeoPixelBusLg<NeoWrgbTm1814Feature, X1Tm1814Method, NeoGammaNullMethod>
+#define B_32_IP_TM1_4 NeoPixelBusLg<NeoWrgbTm1814Feature, X8Tm1814Method, NeoGammaNullMethod> // parallel I2S
 //TM1829 (RGB)
-#define B_32_RN_TM2_3 NeoPixelBus<NeoBrgFeature, NeoEsp32RmtNTm1829Method>
-#define B_32_I2_TM2_3 NeoPixelBus<NeoBrgFeature, X1Tm1829Method>
-#define B_32_IP_TM2_3 NeoPixelBus<NeoBrgFeature, X8Tm1829Method> // parallel I2S
+#define B_32_RN_TM2_3 NeoPixelBusLg<NeoBrgFeature, NeoEsp32RmtNTm1829Method, NeoGammaNullMethod>
+#define B_32_I2_TM2_3 NeoPixelBusLg<NeoBrgFeature, X1Tm1829Method, NeoGammaNullMethod>
+#define B_32_IP_TM2_3 NeoPixelBusLg<NeoBrgFeature, X8Tm1829Method, NeoGammaNullMethod> // parallel I2S
 //UCS8903
-#define B_32_RN_UCS_3 NeoPixelBus<NeoRgbUcs8903Feature, NeoEsp32RmtNWs2812xMethod>
-#define B_32_I2_UCS_3 NeoPixelBus<NeoRgbUcs8903Feature, X1800KbpsMethod>
-#define B_32_IP_UCS_3 NeoPixelBus<NeoRgbUcs8903Feature, X8800KbpsMethod> // parallel I2S
+#define B_32_RN_UCS_3 NeoPixelBusLg<NeoRgbUcs8903Feature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod>
+#define B_32_I2_UCS_3 NeoPixelBusLg<NeoRgbUcs8903Feature, X1800KbpsMethod, NeoGammaNullMethod>
+#define B_32_IP_UCS_3 NeoPixelBusLg<NeoRgbUcs8903Feature, X8800KbpsMethod, NeoGammaNullMethod> // parallel I2S
 //UCS8904
-#define B_32_RN_UCS_4 NeoPixelBus<NeoRgbwUcs8904Feature, NeoEsp32RmtNWs2812xMethod>
-#define B_32_I2_UCS_4 NeoPixelBus<NeoRgbwUcs8904Feature, X1800KbpsMethod>
-#define B_32_IP_UCS_4 NeoPixelBus<NeoRgbwUcs8904Feature, X8800KbpsMethod>// parallel I2S
+#define B_32_RN_UCS_4 NeoPixelBusLg<NeoRgbwUcs8904Feature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod>
+#define B_32_I2_UCS_4 NeoPixelBusLg<NeoRgbwUcs8904Feature, X1800KbpsMethod, NeoGammaNullMethod>
+#define B_32_IP_UCS_4 NeoPixelBusLg<NeoRgbwUcs8904Feature, X8800KbpsMethod, NeoGammaNullMethod>// parallel I2S
 //APA106
-#define B_32_RN_APA106_3 NeoPixelBus<NeoGrbFeature, NeoEsp32RmtNApa106Method>
-#define B_32_I2_APA106_3 NeoPixelBus<NeoGrbFeature, X1Apa106Method>
-#define B_32_IP_APA106_3 NeoPixelBus<NeoGrbFeature, X8Apa106Method> // parallel I2S
+#define B_32_RN_APA106_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32RmtNApa106Method, NeoGammaNullMethod>
+#define B_32_I2_APA106_3 NeoPixelBusLg<NeoGrbFeature, X1Apa106Method, NeoGammaNullMethod>
+#define B_32_IP_APA106_3 NeoPixelBusLg<NeoGrbFeature, X8Apa106Method, NeoGammaNullMethod> // parallel I2S
 //FW1906 GRBCW
-#define B_32_RN_FW6_5 NeoPixelBus<NeoGrbcwxFeature, NeoEsp32RmtNWs2812xMethod>
-#define B_32_I2_FW6_5 NeoPixelBus<NeoGrbcwxFeature, X1800KbpsMethod>
-#define B_32_IP_FW6_5 NeoPixelBus<NeoGrbcwxFeature, X8800KbpsMethod> // parallel I2S
+#define B_32_RN_FW6_5 NeoPixelBusLg<NeoGrbcwxFeature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod>
+#define B_32_I2_FW6_5 NeoPixelBusLg<NeoGrbcwxFeature, X1800KbpsMethod, NeoGammaNullMethod>
+#define B_32_IP_FW6_5 NeoPixelBusLg<NeoGrbcwxFeature, X8800KbpsMethod, NeoGammaNullMethod> // parallel I2S
 //WS2805 RGBWC
-#define B_32_RN_2805_5 NeoPixelBus<NeoGrbwwFeature, NeoEsp32RmtNWs2805Method>
-#define B_32_I2_2805_5 NeoPixelBus<NeoGrbwwFeature, X1Ws2805Method>
-#define B_32_IP_2805_5 NeoPixelBus<NeoGrbwwFeature, X8Ws2805Method> // parallel I2S
+#define B_32_RN_2805_5 NeoPixelBusLg<NeoGrbwwFeature, NeoEsp32RmtNWs2805Method, NeoGammaNullMethod>
+#define B_32_I2_2805_5 NeoPixelBusLg<NeoGrbwwFeature, X1Ws2805Method, NeoGammaNullMethod>
+#define B_32_IP_2805_5 NeoPixelBusLg<NeoGrbwwFeature, X8Ws2805Method, NeoGammaNullMethod> // parallel I2S
 //TM1914 (RGB)
-#define B_32_RN_TM1914_3 NeoPixelBus<NeoGrbTm1914Feature, NeoEsp32RmtNTm1914Method>
-#define B_32_I2_TM1914_3 NeoPixelBus<NeoGrbTm1914Feature, X1Tm1914Method>
-#define B_32_IP_TM1914_3 NeoPixelBus<NeoGrbTm1914Feature, X8Tm1914Method> // parallel I2S
+#define B_32_RN_TM1914_3 NeoPixelBusLg<NeoGrbTm1914Feature, NeoEsp32RmtNTm1914Method, NeoGammaNullMethod>
+#define B_32_I2_TM1914_3 NeoPixelBusLg<NeoGrbTm1914Feature, X1Tm1914Method, NeoGammaNullMethod>
+#define B_32_IP_TM1914_3 NeoPixelBusLg<NeoGrbTm1914Feature, X8Tm1914Method, NeoGammaNullMethod> // parallel I2S
 //Sm16825 (RGBWC)
-#define B_32_RN_SM16825_5 NeoPixelBus<NeoRgbcwSm16825eFeature, NeoEsp32RmtNWs2812xMethod>
-#define B_32_I2_SM16825_5 NeoPixelBus<NeoRgbcwSm16825eFeature, X1Ws2812xMethod>
-#define B_32_IP_SM16825_5 NeoPixelBus<NeoRgbcwSm16825eFeature, X8Ws2812xMethod> // parallel I2S
+#define B_32_RN_SM16825_5 NeoPixelBusLg<NeoRgbcwSm16825eFeature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod>
+#define B_32_I2_SM16825_5 NeoPixelBusLg<NeoRgbcwSm16825eFeature, X1Ws2812xMethod, NeoGammaNullMethod>
+#define B_32_IP_SM16825_5 NeoPixelBusLg<NeoRgbcwSm16825eFeature, X8Ws2812xMethod, NeoGammaNullMethod> // parallel I2S
 #endif
 
 //APA102
@@ -470,12 +470,9 @@ class PolyBus {
 
   static void* create(uint8_t busType, uint8_t* pins, uint16_t len, uint8_t channel) {
     // NOTE: "channel" is only used on ESP32 (and its variants) for RMT channel allocation
-
-    #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3)
-    if (_useParallelI2S && (channel >= 8)) {
-        // Parallel I2S channels are to be used first, so subtract 8 to get the RMT channel number
-        channel -= 8;
-    }
+    // since 0.15.0-b3 I2S1 is favoured for classic ESP32 and moved to position 0 (channel 0) so we need to subtract 1 for correct RMT allocation
+    if (!_useParallelI2S && channel > 0) channel--; // accommodate I2S1 which is used as 1st bus on classic ESP32
+    // if user selected parallel I2S, RMT is used 1st (8 channels) followed by parallel I2S (8 channels)
     #endif
 
     #if defined(ARDUINO_ARCH_ESP32) && !(defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3))
@@ -870,12 +867,12 @@ class PolyBus {
       // I2S1 bus or paralell buses
       #ifndef CONFIG_IDF_TARGET_ESP32C3
       case I_32_I2_NEO_3: if (_useParallelI2S) (static_cast<B_32_IP_NEO_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); else (static_cast<B_32_I2_NEO_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); break;
-      case I_32_I2_NEO_4: if (_useParallelI2S) (static_cast<B_32_IP_NEO_4*>(busPtr))->SetPixelColor(pix, col); else (static_cast<B_32_I2_NEO_4*>(busPtr))->SetPixelColor(pix, col); break;
+      case I_32_I2_NEO_4: if (_useParallelI2S) (static_cast<B_32_IP_NEO_4*>(busPtr))->SetPixelColor(pix, RgbColor(col)); else (static_cast<B_32_I2_NEO_4*>(busPtr))->SetPixelColor(pix, col); break;
       case I_32_I2_400_3: if (_useParallelI2S) (static_cast<B_32_IP_400_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); else (static_cast<B_32_I2_400_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); break;
-      case I_32_I2_TM1_4: if (_useParallelI2S) (static_cast<B_32_IP_TM1_4*>(busPtr))->SetPixelColor(pix, col); else (static_cast<B_32_I2_TM1_4*>(busPtr))->SetPixelColor(pix, col); break;
+      case I_32_I2_TM1_4: if (_useParallelI2S) (static_cast<B_32_IP_TM1_4*>(busPtr))->SetPixelColor(pix, RgbColor(col)); else (static_cast<B_32_I2_TM1_4*>(busPtr))->SetPixelColor(pix, col); break;
       case I_32_I2_TM2_3: if (_useParallelI2S) (static_cast<B_32_IP_TM2_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); else (static_cast<B_32_I2_TM2_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); break;
-      case I_32_I2_UCS_3: if (_useParallelI2S) (static_cast<B_32_IP_UCS_3*>(busPtr))->SetPixelColor(pix, Rgb48Color(RgbColor(col))); else (static_cast<B_32_I2_UCS_3*>(busPtr))->SetPixelColor(pix, Rgb48Color(RgbColor(col))); break;
-      case I_32_I2_UCS_4: if (_useParallelI2S) (static_cast<B_32_IP_UCS_4*>(busPtr))->SetPixelColor(pix, Rgbw64Color(col)); else (static_cast<B_32_I2_UCS_4*>(busPtr))->SetPixelColor(pix, Rgbw64Color(col)); break;
+      case I_32_I2_UCS_3: if (_useParallelI2S) (static_cast<B_32_IP_UCS_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); else (static_cast<B_32_I2_UCS_3*>(busPtr))->SetPixelColor(pix, Rgb48Color(RgbColor(col))); break;
+      case I_32_I2_UCS_4: if (_useParallelI2S) (static_cast<B_32_IP_UCS_4*>(busPtr))->SetPixelColor(pix, RgbColor(col)); else (static_cast<B_32_I2_UCS_4*>(busPtr))->SetPixelColor(pix, Rgbw64Color(col)); break;
       case I_32_I2_APA106_3: if (_useParallelI2S) (static_cast<B_32_IP_APA106_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); else (static_cast<B_32_I2_APA106_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); break;
       case I_32_I2_FW6_5: if (_useParallelI2S) (static_cast<B_32_IP_FW6_5*>(busPtr))->SetPixelColor(pix, RgbwwColor(col.R, col.G, col.B, cctWW, cctCW)); else (static_cast<B_32_I2_FW6_5*>(busPtr))->SetPixelColor(pix, RgbwwColor(col.R, col.G, col.B, cctWW, cctCW)); break;
       case I_32_I2_2805_5: if (_useParallelI2S) (static_cast<B_32_IP_2805_5*>(busPtr))->SetPixelColor(pix, RgbwwColor(col.R, col.G, col.B, cctWW, cctCW)); else (static_cast<B_32_I2_2805_5*>(busPtr))->SetPixelColor(pix, RgbwwColor(col.R, col.G, col.B, cctWW, cctCW)); break;
@@ -893,6 +890,102 @@ class PolyBus {
       case I_SS_WS1_3: (static_cast<B_SS_WS1_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); break;
       case I_HS_P98_3: (static_cast<B_HS_P98_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); break;
       case I_SS_P98_3: (static_cast<B_SS_P98_3*>(busPtr))->SetPixelColor(pix, RgbColor(col)); break;
+    }
+  }
+
+  static void setBrightness(void* busPtr, uint8_t busType, uint8_t b) {
+    switch (busType) {
+      case I_NONE: break;
+    #ifdef ESP8266
+      case I_8266_U0_NEO_3: (static_cast<B_8266_U0_NEO_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_NEO_3: (static_cast<B_8266_U1_NEO_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_NEO_3: (static_cast<B_8266_DM_NEO_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_NEO_3: (static_cast<B_8266_BB_NEO_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_NEO_4: (static_cast<B_8266_U0_NEO_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_NEO_4: (static_cast<B_8266_U1_NEO_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_NEO_4: (static_cast<B_8266_DM_NEO_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_NEO_4: (static_cast<B_8266_BB_NEO_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_400_3: (static_cast<B_8266_U0_400_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_400_3: (static_cast<B_8266_U1_400_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_400_3: (static_cast<B_8266_DM_400_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_400_3: (static_cast<B_8266_BB_400_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_TM1_4: (static_cast<B_8266_U0_TM1_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_TM1_4: (static_cast<B_8266_U1_TM1_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_TM1_4: (static_cast<B_8266_DM_TM1_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_TM1_4: (static_cast<B_8266_BB_TM1_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_TM2_3: (static_cast<B_8266_U0_TM2_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_TM2_3: (static_cast<B_8266_U1_TM2_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_TM2_3: (static_cast<B_8266_DM_TM2_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_TM2_3: (static_cast<B_8266_BB_TM2_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_UCS_3: (static_cast<B_8266_U0_UCS_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_UCS_3: (static_cast<B_8266_U1_UCS_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_UCS_3: (static_cast<B_8266_DM_UCS_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_UCS_3: (static_cast<B_8266_BB_UCS_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_UCS_4: (static_cast<B_8266_U0_UCS_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_UCS_4: (static_cast<B_8266_U1_UCS_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_UCS_4: (static_cast<B_8266_DM_UCS_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_UCS_4: (static_cast<B_8266_BB_UCS_4*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_APA106_3: (static_cast<B_8266_U0_APA106_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_APA106_3: (static_cast<B_8266_U1_APA106_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_APA106_3: (static_cast<B_8266_DM_APA106_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_APA106_3: (static_cast<B_8266_BB_APA106_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_FW6_5: (static_cast<B_8266_U0_FW6_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_FW6_5: (static_cast<B_8266_U1_FW6_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_FW6_5: (static_cast<B_8266_DM_FW6_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_FW6_5: (static_cast<B_8266_BB_FW6_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_2805_5: (static_cast<B_8266_U0_2805_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_2805_5: (static_cast<B_8266_U1_2805_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_2805_5: (static_cast<B_8266_DM_2805_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_2805_5: (static_cast<B_8266_BB_2805_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_TM1914_3: (static_cast<B_8266_U0_TM1914_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_TM1914_3: (static_cast<B_8266_U1_TM1914_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_TM1914_3: (static_cast<B_8266_DM_TM1914_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_TM1914_3: (static_cast<B_8266_BB_TM1914_3*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U0_SM16825_5: (static_cast<B_8266_U0_SM16825_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_U1_SM16825_5: (static_cast<B_8266_U1_SM16825_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_DM_SM16825_5: (static_cast<B_8266_DM_SM16825_5*>(busPtr))->SetLuminance(b); break;
+      case I_8266_BB_SM16825_5: (static_cast<B_8266_BB_SM16825_5*>(busPtr))->SetLuminance(b); break;
+    #endif
+    #ifdef ARDUINO_ARCH_ESP32
+      // RMT buses
+      case I_32_RN_NEO_3: (static_cast<B_32_RN_NEO_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_NEO_4: (static_cast<B_32_RN_NEO_4*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_400_3: (static_cast<B_32_RN_400_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_TM1_4: (static_cast<B_32_RN_TM1_4*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_TM2_3: (static_cast<B_32_RN_TM2_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_UCS_3: (static_cast<B_32_RN_UCS_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_UCS_4: (static_cast<B_32_RN_UCS_4*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_APA106_3: (static_cast<B_32_RN_APA106_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_FW6_5: (static_cast<B_32_RN_FW6_5*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_2805_5: (static_cast<B_32_RN_2805_5*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_TM1914_3: (static_cast<B_32_RN_TM1914_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_RN_SM16825_5: (static_cast<B_32_RN_SM16825_5*>(busPtr))->SetLuminance(b); break;
+      // I2S1 bus or paralell buses
+      #ifndef CONFIG_IDF_TARGET_ESP32C3
+      case I_32_I2_NEO_3: if (_useParallelI2S) (static_cast<B_32_IP_NEO_3*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_NEO_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_NEO_4: if (_useParallelI2S) (static_cast<B_32_IP_NEO_4*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_NEO_4*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_400_3: if (_useParallelI2S) (static_cast<B_32_IP_400_3*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_400_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_TM1_4: if (_useParallelI2S) (static_cast<B_32_IP_TM1_4*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_TM1_4*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_TM2_3: if (_useParallelI2S) (static_cast<B_32_IP_TM2_3*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_TM2_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_UCS_3: if (_useParallelI2S) (static_cast<B_32_IP_UCS_3*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_UCS_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_UCS_4: if (_useParallelI2S) (static_cast<B_32_IP_UCS_4*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_UCS_4*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_APA106_3: if (_useParallelI2S) (static_cast<B_32_IP_APA106_3*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_APA106_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_FW6_5: if (_useParallelI2S) (static_cast<B_32_IP_FW6_5*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_FW6_5*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_2805_5: if (_useParallelI2S) (static_cast<B_32_IP_2805_5*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_2805_5*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_TM1914_3: if (_useParallelI2S) (static_cast<B_32_IP_TM1914_3*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_TM1914_3*>(busPtr))->SetLuminance(b); break;
+      case I_32_I2_SM16825_5: if (_useParallelI2S) (static_cast<B_32_IP_SM16825_5*>(busPtr))->SetLuminance(b); else (static_cast<B_32_I2_SM16825_5*>(busPtr))->SetLuminance(b); break;
+      #endif
+    #endif
+      case I_HS_DOT_3: (static_cast<B_HS_DOT_3*>(busPtr))->SetLuminance(b); break;
+      case I_SS_DOT_3: (static_cast<B_SS_DOT_3*>(busPtr))->SetLuminance(b); break;
+      case I_HS_LPD_3: (static_cast<B_HS_LPD_3*>(busPtr))->SetLuminance(b); break;
+      case I_SS_LPD_3: (static_cast<B_SS_LPD_3*>(busPtr))->SetLuminance(b); break;
+      case I_HS_LPO_3: (static_cast<B_HS_LPO_3*>(busPtr))->SetLuminance(b); break;
+      case I_SS_LPO_3: (static_cast<B_SS_LPO_3*>(busPtr))->SetLuminance(b); break;
+      case I_HS_WS1_3: (static_cast<B_HS_WS1_3*>(busPtr))->SetLuminance(b); break;
+      case I_SS_WS1_3: (static_cast<B_SS_WS1_3*>(busPtr))->SetLuminance(b); break;
+      case I_HS_P98_3: (static_cast<B_HS_P98_3*>(busPtr))->SetLuminance(b); break;
+      case I_SS_P98_3: (static_cast<B_SS_P98_3*>(busPtr))->SetLuminance(b); break;
     }
   }
 
@@ -1340,8 +1433,7 @@ class PolyBus {
       // ESP32-S2 only has 4 RMT channels
       if (_useParallelI2S) {
         if (num > 11) return I_NONE;
-        if (num < 8) offset = 1;    // use x8 parallel I2S0 channels followed by RMT
-                                    // Note: conflicts with AudioReactive if enabled
+        if (num > 3) offset = 1;    // use x8 parallel I2S0 channels (use last to allow Audioreactive)
       } else {
         if (num > 4) return I_NONE;
         if (num > 3) offset = 1;  // only one I2S0 (use last to allow Audioreactive)
@@ -1354,7 +1446,7 @@ class PolyBus {
       // On ESP32-S3 only the first 4 RMT channels are usable for transmitting
       if (_useParallelI2S) {
         if (num > 11) return I_NONE;
-        if (num < 8) offset = 1;    // use x8 parallel I2S LCD channels, followed by RMT
+        if (num > 3) offset = 1;    // use x8 parallel I2S LCD channels
       } else {
         if (num > 3) return I_NONE; // do not use single I2S (as it is not supported)
       }
@@ -1362,7 +1454,7 @@ class PolyBus {
       // standard ESP32 has 8 RMT and x1/x8 I2S1 channels
       if (_useParallelI2S) {
         if (num > 15) return I_NONE;
-        if (num < 8) offset = 1;  // 8 I2S followed by 8 RMT
+        if (num > 7) offset = 1;  // 8 RMT followed by 8 I2S
       } else {
         if (num > 9) return I_NONE;
         if (num == 0) offset = 1; // prefer I2S1 for 1st bus (less flickering but more RAM needed)

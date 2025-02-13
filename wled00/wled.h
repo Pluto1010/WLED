@@ -7,7 +7,7 @@
  */
 
 // version code in format yymmddb (b = daily build)
-#define VERSION 2501160
+#define VERSION 2502220
 
 //uncomment this if you have a "my_config.h" file you'd like to use
 //#define WLED_USE_MY_CONFIG
@@ -921,11 +921,12 @@ WLED_GLOBAL ESPAsyncE131 ddp  _INIT_N(((handleE131Packet)));
 WLED_GLOBAL bool e131NewData _INIT(false);
 
 // led fx library object
-WLED_GLOBAL WS2812FX   strip         _INIT(WS2812FX());
-WLED_GLOBAL std::vector<BusConfig> busConfigs;    //temporary, to remember values from network callback until after
-WLED_GLOBAL bool       doInitBusses  _INIT(false);
-WLED_GLOBAL int8_t     loadLedmap    _INIT(-1);
-WLED_GLOBAL uint8_t    currentLedmap _INIT(0);
+WLED_GLOBAL BusManager busses _INIT(BusManager());
+WLED_GLOBAL WS2812FX strip _INIT(WS2812FX());
+WLED_GLOBAL std::vector<BusConfig> busConfigs; //temporary, to remember values from network callback until after
+WLED_GLOBAL bool doInitBusses _INIT(false);
+WLED_GLOBAL int8_t loadLedmap _INIT(-1);
+WLED_GLOBAL uint8_t currentLedmap _INIT(0);
 #ifndef ESP8266
 WLED_GLOBAL char  *ledmapNames[WLED_MAX_LEDMAPS-1] _INIT_N(({nullptr}));
 #endif
