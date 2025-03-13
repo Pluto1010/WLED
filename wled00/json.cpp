@@ -161,9 +161,6 @@ static bool deserializeSegment(JsonObject elem, byte it, byte presetId = 0)
   bool     transpose = getBoolVal(elem[F("tp")], seg.transpose);
   #endif
 
-  uint8_t set = elem[F("set")] | seg.set;
-  seg.set = constrain(set, 0, 3);
-
   int len = 1;
   if (stop > start) len = stop - start;
   int offset = elem[F("of")] | INT32_MAX;
