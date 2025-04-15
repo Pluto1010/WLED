@@ -4,9 +4,11 @@
  * LED methods
  */
 
- // applies chosen setment properties to legacy values
-void setValuesFromSegment(uint8_t s) {
-  const Segment& seg = strip.getSegment(s);
+void setValuesFromMainSeg()          { setValuesFromSegment(strip.getMainSegmentId()); }
+void setValuesFromFirstSelectedSeg() { setValuesFromSegment(strip.getFirstSelectedSegId()); }
+void setValuesFromSegment(uint8_t s)
+{
+  Segment& seg = strip.getSegment(s);
   colPri[0] = R(seg.colors[0]);
   colPri[1] = G(seg.colors[0]);
   colPri[2] = B(seg.colors[0]);
@@ -26,11 +28,12 @@ void setValuesFromSegment(uint8_t s) {
 void applyValuesToSelectedSegs() {
   for (unsigned i = 0; i < strip.getSegmentsNum(); i++) {
     Segment& seg = strip.getSegment(i);
-    if (!(seg.isActive() && seg.isSelected())) continue;
-    if (effectSpeed     != seg.speed)     {seg.speed     = effectSpeed;     stateChanged = true;}
-    if (effectIntensity != seg.intensity) {seg.intensity = effectIntensity; stateChanged = true;}
-    if (effectPalette   != seg.palette)   {seg.setPalette(effectPalette);}
-    if (effectCurrent   != seg.mode)      {seg.setMode(effectCurrent);}
+    if (i != firstSel && (!seg.isActive() || !seg.isSelected())) continue;
+
+    if (effectSpeed     != selsegPrev.speed)     {seg.speed     = effectSpeed;     stateChanged = true;}
+    if (effectIntensity != selsegPrev.intensity) {seg.intensity = effectIntensity; stateChanged = true;}
+    if (effectPalette   != selsegPrev.palette)   {seg.setPalette(effectPalette);}
+    if (effectCurrent   != selsegPrev.mode)      {seg.setMode(effectCurrent);}
     uint32_t col0 = RGBW32(colPri[0], colPri[1], colPri[2], colPri[3]);
     uint32_t col1 = RGBW32(colSec[0], colSec[1], colSec[2], colSec[3]);
     if (col0 != seg.colors[0])            {seg.setColor(0, col0);}

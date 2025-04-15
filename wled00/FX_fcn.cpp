@@ -276,41 +276,36 @@ void Segment::startTransition(uint16_t dur, bool segmentCopy) {
     if (isInTransition()) _t->_dur = 0;
     return;
   }
-  if (isInTransition()) {
-    if (segmentCopy && !_t->_oldSegment) {
-      // already in transition but segment copy requested and not yet created
-      _t->_oldSegment = new(std::nothrow) Segment(*this); // store/copy current segment settings
-      _t->_start = millis();                              // restart countdown
-      _t->_dur   = dur;
-      _t->_prevPaletteBlends = 0;
-      if (_t->_oldSegment) {
-        _t->_oldSegment->palette = _t->_palette;          // restore original palette and colors (from start of transition)
-        for (unsigned i = 0; i < NUM_COLORS; i++) _t->_oldSegment->colors[i] = _t->_colors[i];
-        DEBUGFX_PRINTF_P(PSTR("-- Updated transition with segment copy: S=%p T(%p) O[%p] OP[%p]\n"), this, _t, _t->_oldSegment, _t->_oldSegment->pixels);
-        if (!_t->_oldSegment->isActive()) stopTransition();
+  if (isInTransition()) return; // already in transition no need to store anything
+
+  // starting a transition has to occur before change so we get current values 1st
+  _t = new Transition(dur); // no previous transition running
+  if (!_t) return; // failed to allocate data
+
+  //DEBUG_PRINTF_P(PSTR("-- Started transition: %p (%p)\n"), this, _t);
+  loadPalette(_t->_palT, palette);
+  _t->_briT           = on ? opacity : 0;
+  _t->_cctT           = cct;
+#ifndef WLED_DISABLE_MODE_BLEND
+  if (modeBlending) {
+    swapSegenv(_t->_segT);
+    _t->_modeT          = mode;
+    _t->_segT._dataLenT = 0;
+    _t->_segT._dataT    = nullptr;
+    if (_dataLen > 0 && data) {
+      _t->_segT._dataT = (byte *)malloc(_dataLen);
+      if (_t->_segT._dataT) {
+        //DEBUG_PRINTF_P(PSTR("--  Allocated duplicate data (%d) for %p: %p\n"), _dataLen, this, _t->_segT._dataT);
+        memcpy(_t->_segT._dataT, data, _dataLen);
+        _t->_segT._dataLenT = _dataLen;
       }
     }
-    return;
+  } else {
+    for (size_t i=0; i<NUM_COLORS; i++) _t->_segT._colorT[i] = colors[i];
   }
-
-  // no previous transition running, start by allocating memory for segment copy
-  _t = new(std::nothrow) Transition(dur);
-  if (_t) {
-    _t->_bri = on ? opacity : 0;
-    _t->_cct = cct;
-    _t->_palette = palette;
-    #ifndef WLED_SAVE_RAM
-    loadPalette(_t->_palT, palette);
-    #endif
-    for (int i=0; i<NUM_COLORS; i++) _t->_colors[i] = colors[i];
-    if (segmentCopy) _t->_oldSegment = new(std::nothrow) Segment(*this); // store/copy current segment settings
-    if (_t->_oldSegment) {
-      DEBUGFX_PRINTF_P(PSTR("-- Started transition: S=%p T(%p) O[%p] OP[%p]\n"), this, _t, _t->_oldSegment, _t->_oldSegment->pixels);
-      if (!_t->_oldSegment->isActive()) stopTransition();
-    } else {
-      DEBUGFX_PRINTF_P(PSTR("-- Started transition without old segment: S=%p T(%p)\n"), this, _t);
-    }
-  };
+#else
+  for (size_t i=0; i<NUM_COLORS; i++) _t->_colorT[i] = colors[i];
+#endif
 }
 
 void Segment::stopTransition() {
@@ -404,15 +399,24 @@ void Segment::handleRandomPalette() {
 }
 
 // segId is given when called from network callback, changes are queued if that segment is currently in its effect function
-void Segment::setGeometry(uint16_t i1, uint16_t i2, uint8_t grp, uint8_t spc, uint16_t ofs, uint16_t i1Y, uint16_t i2Y) {
+void Segment::setGeometry(uint16_t i1, uint16_t i2, uint8_t grp, uint8_t spc, uint16_t ofs, uint16_t i1Y, uint16_t i2Y, uint8_t m12) {
   // return if neither bounds nor grouping have changed
   bool boundsUnchanged = (start == i1 && stop == i2);
   #ifndef WLED_DISABLE_2D
   boundsUnchanged &= (startY == i1Y && stopY == i2Y); // 2D
   #endif
-  boundsUnchanged &= (grouping == grp && spacing == spc); // changing grouping and/or spacing changes virtual segment length (painting dimensions)
 
-  if (stop && (spc > 0 || m12 != map1D2D)) clear();
+  m12 = constrain(m12, 0, 7);
+  if (stop && (spc > 0 || m12 != map1D2D)) fill(BLACK);
+  if (m12 != map1D2D) map1D2D = m12;
+/*
+  if (boundsUnchanged
+      && (!grp || (grouping == grp && spacing == spc))
+      && (m12 == map1D2D)
+     ) return;
+*/
+  stateChanged = true; // send UDP/WS broadcast
+
   if (grp) { // prevent assignment of 0
     grouping = grp;
     spacing = spc;
@@ -423,6 +427,8 @@ void Segment::setGeometry(uint16_t i1, uint16_t i2, uint8_t grp, uint8_t spc, ui
   if (ofs < UINT16_MAX) offset = ofs;
   map1D2D  = constrain(m12, 0, 7);
 
+  DEBUG_PRINTF_P(PSTR("Segment geometry: %d,%d -> %d,%d\n"), (int)i1, (int)i2, (int)i1Y, (int)i2Y);
+  markForReset();
   if (boundsUnchanged) return;
 
   unsigned oldLength = length();
@@ -1034,11 +1040,14 @@ void Segment::fill(uint32_t c) const {
  */
 void Segment::fade_out(uint8_t rate) const {
   if (!isActive()) return; // not active
+  const int cols = is2D() ? virtualWidth() : virtualLength();
+  const int rows = virtualHeight(); // will be 1 for 1D
+
   rate = (256-rate) >> 1;
   const int mappedRate = 256 / (rate + 1);
-  const size_t rlength = rawLength();  // calculate only once
-  for (unsigned j = 0; j < rlength; j++) {
-    uint32_t color = getPixelColorRaw(j);
+
+  for (int y = 0; y < rows; y++) for (int x = 0; x < cols; x++) {
+    uint32_t color = is2D() ? getPixelColorXY(x, y) : getPixelColor(x);
     if (color == colors[1]) continue; // already at target color
     for (int i = 0; i < 32; i += 8) {
       uint8_t c2 = (colors[1]>>i);  // get background channel
@@ -1051,7 +1060,8 @@ void Segment::fade_out(uint8_t rate) const {
       color &= ~(0xFF<<i);
       color |= ((c1 + delta) & 0xFF) << i;
     }
-    setPixelColorRaw(j, color);
+    if (is2D()) setPixelColorXY(x, y, color);
+    else        setPixelColor(x, color);
   }
 }
 
@@ -1333,7 +1343,7 @@ void WS2812FX::service() {
   _isServicing = true;
   _segment_index = 0;
 
-  for (Segment &seg : _segments) {
+  for (segment &seg : _segments) {
     if (_suspend) break; // immediately stop processing segments if suspend requested during service()
 
     // process transition (also pre-calculates progress value)
@@ -1385,8 +1395,7 @@ void WS2812FX::service() {
     yield();
     Segment::handleRandomPalette(); // slowly transition random palette; move it into for loop when each segment has individual random palette
     _lastServiceShow = nowUp; // update timestamp, for precise FPS control
-    show();
-    _lastServiceShow = nowUp; // update timestamp, for precise FPS control
+    if (!_suspend) show();
   }
   #ifdef WLED_DEBUG
   if ((_targetFps != FPS_UNLIMITED) && (millis() - nowUp > _frametime)) DEBUG_PRINTF_P(PSTR("Slow strip %u/%d.\n"), (unsigned)(millis()-nowUp), (int)_frametime);

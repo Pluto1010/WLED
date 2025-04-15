@@ -161,13 +161,8 @@ static bool deserializeSegment(JsonObject elem, byte it, byte presetId = 0)
   bool     transpose = getBoolVal(elem[F("tp")], seg.transpose);
   #endif
 
-  // if segment's virtual dimensions change we need to restart effect (segment blending and PS rely on dimensions)
-  if (seg.mirror != mirror) seg.markForReset();
-  #ifndef WLED_DISABLE_2D
-  if (seg.mirror_y != mirror_y || seg.transpose != transpose) seg.markForReset();
-  #endif
-
-  int len = (stop > start) ? stop - start : 1;
+  int len = 1;
+  if (stop > start) len = stop - start;
   int offset = elem[F("of")] | INT32_MAX;
   if (offset != INT32_MAX) {
     int offsetAbs = abs(offset);
@@ -178,7 +173,7 @@ static bool deserializeSegment(JsonObject elem, byte it, byte presetId = 0)
   if (stop > start && of > len -1) of = len -1;
 
   // update segment (delete if necessary)
-  seg.setGeometry(start, stop, grp, spc, of, startY, stopY); // strip needs to be suspended for this to work without issues
+  seg.setGeometry(start, stop, grp, spc, of, startY, stopY, map1D2D); // strip needs to be suspended for this to work without issues
 
   if (newSeg) seg.refreshLightCapabilities(); // fix for #3403
 
@@ -267,6 +262,7 @@ static bool deserializeSegment(JsonObject elem, byte it, byte presetId = 0)
   }
   #endif
 
+  //seg.map1D2D   = constrain(map1D2D, 0, 7); // done in setGeometry()
   seg.set       = constrain(set, 0, 3);
   seg.soundSim  = constrain(soundSim, 0, 3);
   seg.selected  = selected;
@@ -458,14 +454,18 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
   if (!segVar.isNull()) {
     // we may be called during strip.service() so we must not modify segments while effects are executing
     strip.suspend();
-    strip.waitForIt();
+    const unsigned long waitUntil = millis() + strip.getFrameTime();
+    while (strip.isServicing() && millis() < waitUntil) delay(1); // wait until frame is over
+    #ifdef WLED_DEBUG
+    if (millis() >= waitUntil) DEBUG_PRINTLN(F("JSON: Waited for strip to finish servicing."));
+    #endif
     if (segVar.is<JsonObject>()) {
       int id = segVar["id"] | -1;
       //if "seg" is not an array and ID not specified, apply to all selected/checked segments
       if (id < 0) {
         //apply all selected segments
         for (size_t s = 0; s < strip.getSegmentsNum(); s++) {
-          const Segment &sg = strip.getSegment(s);
+          Segment &sg = strip.getSegment(s);
           if (sg.isActive() && sg.isSelected()) {
             deserializeSegment(segVar, s, presetId);
           }
