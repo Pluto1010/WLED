@@ -685,35 +685,12 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
 
 static const char s_cfg_json[] PROGMEM = "/cfg.json";
 
-bool backupConfig() {
-  return backupFile(s_cfg_json);
-}
-
-bool restoreConfig() {
-  return restoreFile(s_cfg_json);
-}
-
-bool verifyConfig() {
-  return validateJsonFile(s_cfg_json);
-}
-
-// rename config file and reboot
-// if the cfg file doesn't exist, such as after a reset, do nothing
-void resetConfig() {
-  if (WLED_FS.exists(s_cfg_json)) {
-    DEBUG_PRINTLN(F("Reset config"));
-    char backupname[32];
-    snprintf_P(backupname, sizeof(backupname), PSTR("/rst.%s"), &s_cfg_json[1]);
-    WLED_FS.rename(s_cfg_json, backupname);
-    doReboot = true;
-  }
-}
-
 bool deserializeConfigFromFS() {
   [[maybe_unused]] bool success = deserializeConfigSec();
   #ifdef WLED_ADD_EEPROM_SUPPORT
   if (!success) { //if file does not exist, try reading from EEPROM
     deEEPSettings();
+    return true;
   }
   #endif
 
@@ -722,6 +699,17 @@ bool deserializeConfigFromFS() {
   DEBUG_PRINTLN(F("Reading settings from /cfg.json..."));
 
   success = readObjectFromFile(s_cfg_json, nullptr, pDoc);
+  if (!success) { // if file does not exist, optionally try reading from EEPROM and then save defaults to FS
+    releaseJSONBufferLock();
+    #ifdef WLED_ADD_EEPROM_SUPPORT
+    deEEPSettings();
+    #endif
+    // init Ethernet (in case default type is set at compile time)
+    #ifdef WLED_USE_ETHERNET
+    WLED::instance().initEthernet();
+    #endif
+    return true; // config does not exist (we will need to save it once strip is initialised)
+  }
 
   // NOTE: This routine deserializes *and* applies the configuration
   //       Therefore, must also initialize ethernet from this function
