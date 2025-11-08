@@ -15,6 +15,10 @@
   #include "../usermods/Battery/usermod_v2_Battery.h"
 #endif
 
+#ifdef USERMOD_BATTERY_STATUS
+  #include "../usermods/BatteryStatus/usermod_BatteryStatus.h"
+#endif
+
 #ifdef USERMOD_DALLASTEMPERATURE
   #include "../usermods/Temperature/usermod_temperature.h"
 #endif
@@ -257,6 +261,10 @@ void registerUsermods()
 
   #ifdef USERMOD_BATTERY
   UsermodManager::add(new UsermodBattery());
+  #endif
+
+  #ifdef USERMOD_BATTERY_STATUS
+  UsermodManager::add(new UsermodBatteryStatus());
   #endif
 
   #ifdef USERMOD_DALLASTEMPERATURE
