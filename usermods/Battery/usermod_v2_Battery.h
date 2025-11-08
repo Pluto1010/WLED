@@ -6,6 +6,7 @@
 #include "types/UnkownUMBattery.h"
 #include "types/LionUMBattery.h"
 #include "types/LipoUMBattery.h"
+#include <math.h>
 
 /*
  * Usermod by Maximilian Mewes
@@ -20,7 +21,15 @@ class UsermodBattery : public Usermod
     int8_t batteryPin = USERMOD_BATTERY_MEASUREMENT_PIN;
     
     UMBattery* bat = new UnkownUMBattery();
-    batteryConfig cfg;
+    batteryConfig cfg = {
+      (batteryType)USERMOD_BATTERY_DEFAULT_TYPE,
+      0.0f,
+      0.0f,
+      0.0f,
+      0,
+      USERMOD_BATTERY_CALIBRATION,
+      USERMOD_BATTERY_VOLTAGE_MULTIPLIER
+    };
 
     // Initial delay before first reading to allow voltage stabilization
     unsigned long initialDelay = USERMOD_BATTERY_INITIAL_DELAY;
@@ -97,7 +106,7 @@ class UsermodBattery : public Usermod
     void lowPowerIndicator()
     {
       if (!lowPowerIndicatorEnabled) return;
-      if (batteryPin < 0) return;  // no measurement
+      if (batteryPin < 0 && bat->getVoltage() <= 0) return;  // no measurement available
       if (lowPowerIndicationDone && lowPowerIndicatorReactivationThreshold <= bat->getLevel()) lowPowerIndicationDone = false;
       if (lowPowerIndicatorThreshold <= bat->getLevel()) return;
       if (lowPowerIndicationDone) return;
@@ -112,6 +121,20 @@ class UsermodBattery : public Usermod
         lowPowerActivationTime = 0;
         applyPreset(lastPreset);
       }      
+    }
+
+    void finalizeMeasurement(float voltage)
+    {
+      bat->setVoltage(voltage);
+      bat->calculateAndSetLevel(voltage);
+
+      if (autoOffEnabled && (autoOffThreshold >= bat->getLevel()))
+        turnOff();
+
+#ifndef WLED_DISABLE_MQTT
+      publishMqtt("battery", String(bat->getLevel(), 0).c_str());
+      publishMqtt("voltage", String(bat->getVoltage()).c_str());
+#endif
     }
 
     /**
@@ -187,10 +210,17 @@ class UsermodBattery : public Usermod
     void setup() 
     {
       // plug in the right battery type
+      if (bat) {
+        delete bat;
+        bat = nullptr;
+      }
+
       if(cfg.type == (batteryType)lipo) {
         bat = new LipoUMBattery();
       } else if(cfg.type == (batteryType)lion) {
         bat = new LionUMBattery();
+      } else {
+        bat = new UnkownUMBattery();
       }
 
       // update the choosen battery type with configured values
@@ -274,20 +304,9 @@ class UsermodBattery : public Usermod
       float rawValue = readVoltage();
 
       // filter with exponential smoothing because ADC in esp32 is fluctuating too much for a good single readout
-      float filteredVoltage = bat->getVoltage() + alpha * (rawValue - bat->getVoltage());
+    float filteredVoltage = bat->getVoltage() + alpha * (rawValue - bat->getVoltage());
 
-      bat->setVoltage(filteredVoltage);
-      // translate battery voltage into percentage
-      bat->calculateAndSetLevel(filteredVoltage);
-
-      // Auto off -- Master power off
-      if (autoOffEnabled && (autoOffThreshold >= bat->getLevel()))
-        turnOff();
-
-#ifndef WLED_DISABLE_MQTT
-      publishMqtt("battery", String(bat->getLevel(), 0).c_str());
-      publishMqtt("voltage", String(bat->getVoltage()).c_str());
-#endif
+    finalizeMeasurement(filteredVoltage);
 
     }
 
@@ -301,11 +320,11 @@ class UsermodBattery : public Usermod
       JsonObject user = root["u"];
       if (user.isNull()) user = root.createNestedObject("u");
 
-      if (batteryPin < 0) {
+      if (batteryPin < 0 && bat->getVoltage() <= 0) {
         JsonArray infoVoltage = user.createNestedArray(F("Battery voltage"));
         infoVoltage.add(F("n/a"));
-        infoVoltage.add(F(" invalid GPIO"));
-        return;  // no GPIO - nothing to report
+        infoVoltage.add(F(" external source missing"));
+        return;  // no data available
       }
 
       // info modal display names
@@ -708,6 +727,75 @@ class UsermodBattery : public Usermod
     void setVoltageMultiplier(float multiplier)
     {
       bat->setVoltageMultiplier(multiplier);
+    }
+
+    void registerExternalVoltage(float voltage, bool smooth = true)
+    {
+      if (!initDone) return;
+
+      initializing = false;
+      initialDelayComplete = true;
+      isFirstVoltageReading = false;
+      lastReadTime = millis();
+      nextReadTime = millis() + readingInterval;
+
+      float processedVoltage = voltage;
+      if (smooth && bat->getVoltage() > 0.0f) {
+        processedVoltage = bat->getVoltage() + alpha * (voltage - bat->getVoltage());
+      }
+
+      finalizeMeasurement(processedVoltage);
+    }
+
+    void configureExternalBattery(uint8_t typeOverride,
+                                   float minVoltage,
+                                   float maxVoltage,
+                                   float calibrationOffset = NAN,
+                                   float voltageMultiplier = NAN)
+    {
+      batteryType desiredType = (typeOverride <= static_cast<uint8_t>(lion))
+                                  ? static_cast<batteryType>(typeOverride)
+                                  : cfg.type;
+
+      if (desiredType != cfg.type) {
+        if (bat) delete bat;
+        switch (desiredType) {
+          case lipo:
+            bat = new LipoUMBattery();
+            break;
+          case lion:
+            bat = new LionUMBattery();
+            break;
+          default:
+            bat = new UnkownUMBattery();
+            desiredType = unknown;
+            break;
+        }
+        cfg.type = desiredType;
+      }
+
+      if (!bat) {
+        bat = new UnkownUMBattery();
+        cfg.type = unknown;
+      }
+
+      if (!isnan(minVoltage)) {
+        cfg.minVoltage = minVoltage;
+      }
+
+      if (!isnan(maxVoltage)) {
+        cfg.maxVoltage = maxVoltage;
+      }
+
+      if (!isnan(calibrationOffset)) {
+        cfg.calibration = calibrationOffset;
+      }
+
+      if (!isnan(voltageMultiplier)) {
+        cfg.voltageMultiplier = voltageMultiplier;
+      }
+
+      bat->update(cfg);
     }
 
     /*
